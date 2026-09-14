@@ -1,26 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>MCCC SE Knockout Leaderboard - Input</title>
-        <script src="script.js" defer></script>
-    </head>
-    <header id="top">
-        <h1>Enter Wins</h1>
-        <nav>
-            <a href="index.html">Home</a>
-            <a href="month.html">Monthly</a>
-            <a href="year.html">All Year</a>
-            <a href="input.html">Input</a>
-            <a href="rules.html">Rules</a>
-        </nav>
-    </header>
-    <footer>
-        <a href="index.html">Home</a>
-        <a href="month.html">Monthly</a>
-        <a href="year.html">All Year</a>
-        <a href="input.html">Input</a>
-        <a href="rules.html">Rules</a>
-        <a href="#top">Back To Top</a>
-    </footer>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Win Input</title>
+  <script src="script.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <a href="index.html" class="nav-link">&larr; Back to Leaderboard</a>
+
+    <!-- Passcode Lock Container -->
+    <div id="auth-container" class="auth-box">
+      <h2>Admin Access</h2>
+      <input type="password" id="admin-pin" placeholder="Enter Admin PIN">
+      <button type="button" onclick="checkAdminAccess()">Unlock</button>
+      <p id="pin-error"></p>
+    </div>
+
+    <!-- Win Input Container (Revealed after authorization) -->
+    <div id="input-container" style="display: none;">
+      <h2>Update Wins</h2>
+
+      <label for="month-select">Select Target: </label>
+      <select id="month-select" onchange="renderInputPage()"></select>
+
+      <form id="wins-form" onsubmit="event.preventDefault(); submitWins();">
+        <div id="input-list">
+          <!-- Populated dynamically in A-Z order by script.js -->
+        </div>
+        <button type="submit" class="submit-btn">Submit Wins</button>
+      </form>
+    </div>
+  </div>
+
+</body>
 </html>
