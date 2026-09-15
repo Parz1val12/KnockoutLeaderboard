@@ -29,10 +29,10 @@ const defaultClassmates = [
   { name: "Carson", wins: 0 },
   { name: "Bryson", wins: 0 },
   { name: "Grant", wins: 0 },
-  { name: "Hailey", wins: 0 }
+  { name: "Hailey", wins: 0 },
+  { name: "Mr. McMaster", wins: 0 }
 ];
-
-const ADMIN_PIN = "Zelda925";
+const WHITE_BORDER = "1471";
 const MONTHS = [
   "January", "February", "March", "April", "May", "June", 
   "July", "August", "September", "October", "November", "December"
@@ -160,18 +160,18 @@ function renderMonthView() {
   renderLeaderboard('month-leaderboard-body', `monthlyWins_${select.value}`);
 }
 
-function checkAdminAccess() {
-  const pinInput = document.getElementById('admin-pin');
+function checkWhiteBorder() {
+  const pinInput = document.getElementById('admin-pin') || document.getElementById('user-key');
   const authContainer = document.getElementById('auth-container');
   const inputContainer = document.getElementById('input-container');
-  const errorMsg = document.getElementById('pin-error');
+  const errorMsg = document.getElementById('pin-error') || document.getElementById('key-error');
 
-  if (pinInput && pinInput.value === ADMIN_PIN) {
-    authContainer.style.display = 'none';
-    inputContainer.style.display = 'block';
+  if (pinInput && pinInput.value === WHITE_BORDER) {
+    if (authContainer) authContainer.style.display = 'none';
+    if (inputContainer) inputContainer.style.display = 'block';
     renderInputPage();
   } else if (errorMsg) {
-    errorMsg.textContent = 'Incorrect PIN';
+    errorMsg.textContent = 'Invalid Code';
   }
 }
 
@@ -197,16 +197,16 @@ async function renderInputPage() {
   listContainer.innerHTML = '';
 
   players.forEach((player, index) => {
-    const row = document.createElement('div');
-    row.className = 'input-row';
-    row.style.margin = '10px 0';
-    row.innerHTML = `
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'input-row';
+    rowDiv.style.margin = '10px 0';
+    rowDiv.innerHTML = `
       <span class="player-name">${player.name} (Current: ${player.wins})</span>
       <button type="button" onclick="changeDelta(${index}, -1)">-</button>
       <input type="number" id="delta-${index}" value="0" data-name="${player.name}" style="width: 50px; text-align: center;" />
       <button type="button" onclick="changeDelta(${index}, 1)">+</button>
     `;
-    listContainer.appendChild(row);
+    listContainer.appendChild(rowDiv);
   });
 }
 
@@ -250,8 +250,17 @@ async function submitWins() {
 document.addEventListener('DOMContentLoaded', () => {
   populateMonthDropdowns();
   const currentMonth = getCurrentMonth();
-  renderLeaderboard('podium-body', `monthlyWins_${currentMonth}`, 5);
-  renderLeaderboard('yearly-podium-body', 'yearlyWins', 5);
+  renderLeaderboard('podium-body', `monthlyWins_${currentMonth}`, 3);
+  renderLeaderboard('yearly-podium-body', 'yearlyWins', 3);
   renderMonthView();
   renderLeaderboard('allyear-leaderboard-body', 'yearlyWins');
+
+  const pinInput = document.getElementById('admin-pin') || document.getElementById('user-key');
+  if (pinInput) {
+    pinInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        checkWhiteBorder();
+      }
+    });
+  }
 });
