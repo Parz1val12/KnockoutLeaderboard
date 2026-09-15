@@ -1,4 +1,19 @@
-// Default list of classmates and initial win counts
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCrlCVJamy8lHUZOebVQ8qVg4MVuUDzl04",
+  authDomain: "knockout-leaderboard.firebaseapp.com",
+  projectId: "knockout-leaderboard",
+  storageBucket: "knockout-leaderboard.firebasestorage.app",
+  messagingSenderId: "872753954535",
+  appId: "1:872753954535:web:c03c9b75d72fb2aa8d6c42",
+  measurementId: "G-Z764K0F1B1"
+};
+
+// Initialize Firebase & Cloud Firestore
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Default list of classmates
 const defaultClassmates = [
   { name: "Ian", wins: 0 },
   { name: "Ben", wins: 0 },
@@ -15,7 +30,7 @@ const defaultClassmates = [
   { name: "Hailey", wins: 0 }
 ];
 
-const ADMIN_PIN = "Zelda123!";
+const ADMIN_PIN = "Zelda925";
 const MONTHS = [
   "January", "February", "March", "April", "May", "June", 
   "July", "August", "September", "October", "November", "December"
@@ -29,16 +44,13 @@ function getCurrentMonth() {
 function populateMonthDropdowns() {
   const currentMonth = getCurrentMonth();
 
-  // Input page dropdown (includes Year Only)
   const monthSelect = document.getElementById('month-select');
   if (monthSelect && monthSelect.options.length === 0) {
     MONTHS.forEach(m => {
       const opt = document.createElement('option');
       opt.value = m;
       opt.textContent = m;
-      if (m === currentMonth) {
-        opt.selected = true;
-      }
+      if (m === currentMonth) opt.selected = true;
       monthSelect.appendChild(opt);
     });
 
@@ -48,37 +60,41 @@ function populateMonthDropdowns() {
     monthSelect.appendChild(yearOnlyOpt);
   }
 
-  // Monthly view page dropdown
   const monthViewSelect = document.getElementById('month-view-select');
   if (monthViewSelect && monthViewSelect.options.length === 0) {
     MONTHS.forEach(m => {
       const opt = document.createElement('option');
       opt.value = m;
       opt.textContent = m;
-      if (m === currentMonth) {
-        opt.selected = true;
-      }
+      if (m === currentMonth) opt.selected = true;
       monthViewSelect.appendChild(opt);
     });
   }
 }
 
-// Load data or initialize default list if key doesn't exist
-function getPlayers(key) {
-  const storedData = localStorage.getItem(key);
-  if (!storedData) {
-    localStorage.setItem(key, JSON.stringify(defaultClassmates));
+// Fetch players from Firestore (initializes default list if document doesn't exist yet)
+async function getPlayers(key) {
+  const docRef = db.collection("leaderboard").doc(key);
+  const doc = await docRef.get();
+  
+  if (!doc.exists) {
+    await docRef.set({ players: defaultClassmates });
     return JSON.parse(JSON.stringify(defaultClassmates));
   }
-  return JSON.parse(storedData);
+  return doc.data().players;
 }
 
-// Unified leaderboard renderer with screen reader accessibility
-function renderLeaderboard(tbodyId, storageKey, maxRows = null) {
+// Save player list back to Firestore
+async function savePlayers(key, players) {
+  await db.collection("leaderboard").doc(key).set({ players });
+}
+
+// Unified leaderboard renderer
+async function renderLeaderboard(tbodyId, storageKey, maxRows = null) {
   const tableBody = document.getElementById(tbodyId);
   if (!tableBody) return;
 
-  const players = getPlayers(storageKey);
+  const players = await getPlayers(storageKey);
   players.sort((a, b) => b.wins - a.wins);
 
   tableBody.innerHTML = '';
@@ -115,7 +131,6 @@ function renderLeaderboard(tbodyId, storageKey, maxRows = null) {
   });
 }
 
-// Render monthly leaderboard based on the month page dropdown
 function renderMonthView() {
   const select = document.getElementById('month-view-select');
   if (!select) return;
@@ -123,7 +138,6 @@ function renderMonthView() {
   renderLeaderboard('month-leaderboard-body', `monthlyWins_${select.value}`);
 }
 
-// Passcode authentication for input.html
 function checkAdminAccess() {
   const pinInput = document.getElementById('admin-pin');
   const authContainer = document.getElementById('auth-container');
@@ -139,7 +153,6 @@ function checkAdminAccess() {
   }
 }
 
-// Adjust input values up or down
 function changeDelta(index, amount) {
   const inputEl = document.getElementById(`delta-${index}`);
   if (inputEl) {
@@ -148,8 +161,7 @@ function changeDelta(index, amount) {
   }
 }
 
-// Render student list in A-Z order for input page
-function renderInputPage() {
+async function renderInputPage() {
   const listContainer = document.getElementById('input-list');
   if (!listContainer) return;
 
@@ -157,7 +169,7 @@ function renderInputPage() {
   const selectedMonth = monthSelect && monthSelect.value ? monthSelect.value : getCurrentMonth();
   
   let storageKey = selectedMonth === 'Year Only' ? 'yearlyWins' : `monthlyWins_${selectedMonth}`;
-  let players = getPlayers(storageKey);
+  let players = await getPlayers(storageKey);
   players.sort((a, b) => a.name.localeCompare(b.name));
 
   listContainer.innerHTML = '';
@@ -176,25 +188,24 @@ function renderInputPage() {
   });
 }
 
-// Apply changes based on selection, then reset inputs to 0
-function submitWins() {
+async function submitWins() {
   const monthSelect = document.getElementById('month-select');
   const selectedMonth = monthSelect && monthSelect.value ? monthSelect.value : getCurrentMonth();
   const inputs = document.querySelectorAll('[id^="delta-"]');
 
   if (selectedMonth === 'Year Only') {
-    let yearlyPlayers = getPlayers('yearlyWins');
+    let yearlyPlayers = await getPlayers('yearlyWins');
     inputs.forEach(input => {
       const name = input.getAttribute('data-name');
       const delta = parseInt(input.value) || 0;
       const yPlayer = yearlyPlayers.find(p => p.name === name);
       if (yPlayer) yPlayer.wins = Math.max(0, yPlayer.wins + delta);
     });
-    localStorage.setItem('yearlyWins', JSON.stringify(yearlyPlayers));
+    await savePlayers('yearlyWins', yearlyPlayers);
   } else {
     const monthKey = `monthlyWins_${selectedMonth}`;
-    let monthlyPlayers = getPlayers(monthKey);
-    let yearlyPlayers = getPlayers('yearlyWins');
+    let monthlyPlayers = await getPlayers(monthKey);
+    let yearlyPlayers = await getPlayers('yearlyWins');
 
     inputs.forEach(input => {
       const name = input.getAttribute('data-name');
@@ -207,18 +218,18 @@ function submitWins() {
       if (yPlayer) yPlayer.wins = Math.max(0, yPlayer.wins + delta);
     });
 
-    localStorage.setItem(monthKey, JSON.stringify(monthlyPlayers));
-    localStorage.setItem('yearlyWins', JSON.stringify(yearlyPlayers));
+    await savePlayers(monthKey, monthlyPlayers);
+    await savePlayers('yearlyWins', yearlyPlayers);
   }
 
-  renderInputPage();
+  await renderInputPage();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   populateMonthDropdowns();
   const currentMonth = getCurrentMonth();
-  renderLeaderboard('podium-body', `monthlyWins_${currentMonth}`, 5);  // Home: Current Month Top 5
-  renderLeaderboard('yearly-podium-body', 'yearlyWins', 5);             // Home: All-Year Top 5
-  renderMonthView();                                                    // Month: Full Selected Month List
-  renderLeaderboard('allyear-leaderboard-body', 'yearlyWins');          // Year: Full List
+  renderLeaderboard('podium-body', `monthlyWins_${currentMonth}`, 5);
+  renderLeaderboard('yearly-podium-body', 'yearlyWins', 5);
+  renderMonthView();
+  renderLeaderboard('allyear-leaderboard-body', 'yearlyWins');
 });
