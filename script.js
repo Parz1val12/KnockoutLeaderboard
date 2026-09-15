@@ -1,249 +1,224 @@
-/* =========================================================
-   MCCC SE Knockout Leaderboard - Realtime Database (SDK v10)
-   ========================================================= */
+// Default list of classmates and initial win counts
+const defaultClassmates = [
+  { name: "Ian", wins: 0 },
+  { name: "Ben", wins: 0 },
+  { name: "Fetty", wins: 0 },
+  { name: "Delvin", wins: 0 },
+  { name: "Russel", wins: 0 },
+  { name: "Landon", wins: 0 },
+  { name: "Cody", wins: 0 },
+  { name: "Jacob", wins: 0 },
+  { name: "Nick", wins: 0 },
+  { name: "Carson", wins: 0 },
+  { name: "Bryson", wins: 0 },
+  { name: "Grant", wins: 0 },
+  { name: "Hailey", wins: 0 }
+];
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+const ADMIN_PIN = "Zelda123!";
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June", 
+  "July", "August", "September", "October", "November", "December"
+];
 
-// Firebase Configuration (Replace with your Firebase Console credentials)
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-// Admin Configuration
-const ADMIN_PIN = "1234"; // Set your desired admin access PIN
-
-// DOM Element References
-const holeSelect = document.getElementById('hole-select');
-const leaderboardBody = document.getElementById('leaderboard-body');
-const authContainer = document.getElementById('auth-container');
-const inputContainer = document.getElementById('input-container');
-const pinInput = document.getElementById('pin-input');
-const pinSubmitBtn = document.getElementById('pin-submit');
-const pinError = document.getElementById('pin-error');
-const scoreForm = document.getElementById('score-form');
-const playerInputsContainer = document.getElementById('player-inputs');
-
-// ---------------------------------------------------------
-// 1. Leaderboard Realtime Fetch & Rendering
-// ---------------------------------------------------------
-
-function fetchLeaderboard(holeNumber) {
-  if (!leaderboardBody) return;
-
-  const scoresRef = ref(db, `scores/hole_${holeNumber}`);
-
-  onValue(scoresRef, (snapshot) => {
-    leaderboardBody.innerHTML = '';
-
-    if (!snapshot.exists()) {
-      leaderboardBody.innerHTML = `
-        <tr>
-          <td colspan="3" style="text-align:center; padding: 20px; color: var(--text-secondary);">
-            No scores posted for Hole ${holeNumber} yet.
-          </td>
-        </tr>`;
-      return;
-    }
-
-    const data = snapshot.val();
-
-    // Convert object to array and sort ascending (Golf scoring: lower is better)
-    const playersArray = Object.entries(data).map(([id, player]) => ({
-      id,
-      name: player.name || id,
-      score: parseInt(player.score, 10) || 0
-    })).sort((a, b) => a.score - b.score);
-
-    // Build Table Rows
-    playersArray.forEach((player, index) => {
-      const row = document.createElement('tr');
-
-      let rankDisplay = index + 1;
-      if (index === 0) rankDisplay = '<span role="img" aria-label="1st Place">🥇</span>';
-      else if (index === 1) rankDisplay = '<span role="img" aria-label="2nd Place">🥈</span>';
-      else if (index === 2) rankDisplay = '<span role="img" aria-label="3rd Place">🥉</span>';
-
-      row.innerHTML = `
-        <td>${rankDisplay}</td>
-        <td class="player-name">${escapeHtml(player.name)}</td>
-        <td>${player.score}</td>
-      `;
-
-      leaderboardBody.appendChild(row);
-    });
-  }, (error) => {
-    console.error("Firebase Read Error:", error);
-    if (leaderboardBody) {
-      leaderboardBody.innerHTML = `
-        <tr>
-          <td colspan="3" style="text-align:center; color: var(--danger-color); padding: 20px;">
-            Error loading leaderboard. Verify Firebase Realtime Database Security Rules.
-          </td>
-        </tr>`;
-    }
-  });
+function getCurrentMonth() {
+  return MONTHS[new Date().getMonth()];
 }
 
-// ---------------------------------------------------------
-// 2. Admin PIN Authentication
-// ---------------------------------------------------------
+// Automatically populates any month dropdown on the page
+function populateMonthDropdowns() {
+  const currentMonth = getCurrentMonth();
 
-function verifyPin() {
-  if (!pinInput) return;
+  // Input page dropdown (includes Year Only)
+  const monthSelect = document.getElementById('month-select');
+  if (monthSelect && monthSelect.options.length === 0) {
+    MONTHS.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      if (m === currentMonth) {
+        opt.selected = true;
+      }
+      monthSelect.appendChild(opt);
+    });
 
-  const enteredPin = pinInput.value.trim();
+    const yearOnlyOpt = document.createElement('option');
+    yearOnlyOpt.value = 'Year Only';
+    yearOnlyOpt.textContent = 'Year Only';
+    monthSelect.appendChild(yearOnlyOpt);
+  }
 
-  if (enteredPin === ADMIN_PIN) {
-    if (pinError) pinError.textContent = '';
-    if (authContainer) authContainer.style.display = 'none';
-    if (inputContainer) {
-      inputContainer.style.display = 'block';
-      loadScoreInputRows(holeSelect ? holeSelect.value : "1");
-    }
-  } else {
-    if (pinError) {
-      pinError.textContent = 'Incorrect PIN. Please try again.';
-      pinError.style.animation = 'none';
-      pinError.offsetHeight; // Force DOM reflow to re-trigger CSS keyframe
-      pinError.style.animation = 'shakeError 0.4s ease-in-out';
-    }
-    pinInput.value = '';
-    pinInput.focus();
+  // Monthly view page dropdown
+  const monthViewSelect = document.getElementById('month-view-select');
+  if (monthViewSelect && monthViewSelect.options.length === 0) {
+    MONTHS.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      if (m === currentMonth) {
+        opt.selected = true;
+      }
+      monthViewSelect.appendChild(opt);
+    });
   }
 }
 
-// ---------------------------------------------------------
-// 3. Score Entry & Database Submission
-// ---------------------------------------------------------
-
-function loadScoreInputRows(holeNumber) {
-  if (!playerInputsContainer) return;
-
-  const scoresRef = ref(db, `scores/hole_${holeNumber}`);
-
-  onValue(scoresRef, (snapshot) => {
-    playerInputsContainer.innerHTML = '';
-    const data = snapshot.exists() ? snapshot.val() : {};
-
-    // Default roster structure if hole node is currently empty
-    const defaultPlayers = ['Player 1', 'Player 2', 'Player 3', 'Player 4'];
-    const playerKeys = Object.keys(data).length > 0 ? Object.keys(data) : defaultPlayers;
-
-    playerKeys.forEach((key) => {
-      const playerData = data[key] || { name: key, score: 0 };
-      const row = document.createElement('div');
-      row.className = 'input-row';
-      row.style.marginBottom = '10px';
-
-      row.innerHTML = `
-        <span class="player-name">${escapeHtml(playerData.name || key)}</span>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <button type="button" class="btn-decrement" data-target="${key}">-</button>
-          <input type="number" id="input-${key}" data-player="${escapeHtml(playerData.name || key)}" value="${playerData.score}" style="width: 60px; text-align: center;">
-          <button type="button" class="btn-increment" data-target="${key}">+</button>
-        </div>
-      `;
-
-      playerInputsContainer.appendChild(row);
-    });
-
-    // Attach step adjusters
-    playerInputsContainer.querySelectorAll('.btn-decrement').forEach(btn => {
-      btn.addEventListener('click', () => adjustScore(btn.dataset.target, -1));
-    });
-
-    playerInputsContainer.querySelectorAll('.btn-increment').forEach(btn => {
-      btn.addEventListener('click', () => adjustScore(btn.dataset.target, 1));
-    });
-  }, { onlyOnce: true });
+// Load data or initialize default list if key doesn't exist
+function getPlayers(key) {
+  const storedData = localStorage.getItem(key);
+  if (!storedData) {
+    localStorage.setItem(key, JSON.stringify(defaultClassmates));
+    return JSON.parse(JSON.stringify(defaultClassmates));
+  }
+  return JSON.parse(storedData);
 }
 
-function adjustScore(targetId, delta) {
-  const inputEl = document.getElementById(`input-${targetId}`);
+// Unified leaderboard renderer with screen reader accessibility
+function renderLeaderboard(tbodyId, storageKey, maxRows = null) {
+  const tableBody = document.getElementById(tbodyId);
+  if (!tableBody) return;
+
+  const players = getPlayers(storageKey);
+  players.sort((a, b) => b.wins - a.wins);
+
+  tableBody.innerHTML = '';
+
+  let currentRank = 1;
+  let prevWins = null;
+  let renderedCount = 0;
+
+  players.forEach((player, index) => {
+    if (prevWins !== null && player.wins < prevWins) {
+      currentRank = index + 1;
+    }
+    prevWins = player.wins;
+
+    if (maxRows && renderedCount >= maxRows) return;
+
+    let rankDisplay = currentRank;
+    if (currentRank === 1) {
+      rankDisplay = '<span role="img" aria-label="1st Place">🥇</span>';
+    } else if (currentRank === 2) {
+      rankDisplay = '<span role="img" aria-label="2nd Place">🥈</span>';
+    } else if (currentRank === 3) {
+      rankDisplay = '<span role="img" aria-label="3rd Place">🥉</span>';
+    }
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td aria-label="Rank ${currentRank}">${rankDisplay}</td>
+      <td>${player.name}</td>
+      <td>${player.wins}</td>
+    `;
+    tableBody.appendChild(row);
+    renderedCount++;
+  });
+}
+
+// Render monthly leaderboard based on the month page dropdown
+function renderMonthView() {
+  const select = document.getElementById('month-view-select');
+  if (!select) return;
+
+  renderLeaderboard('month-leaderboard-body', `monthlyWins_${select.value}`);
+}
+
+// Passcode authentication for input.html
+function checkAdminAccess() {
+  const pinInput = document.getElementById('admin-pin');
+  const authContainer = document.getElementById('auth-container');
+  const inputContainer = document.getElementById('input-container');
+  const errorMsg = document.getElementById('pin-error');
+
+  if (pinInput && pinInput.value === ADMIN_PIN) {
+    authContainer.style.display = 'none';
+    inputContainer.style.display = 'block';
+    renderInputPage();
+  } else if (errorMsg) {
+    errorMsg.textContent = 'Incorrect PIN';
+  }
+}
+
+// Adjust input values up or down
+function changeDelta(index, amount) {
+  const inputEl = document.getElementById(`delta-${index}`);
   if (inputEl) {
-    let current = parseInt(inputEl.value, 10) || 0;
-    inputEl.value = Math.max(0, current + delta);
+    let val = parseInt(inputEl.value) || 0;
+    inputEl.value = val + amount;
   }
 }
 
-function submitScores(e) {
-  if (e) e.preventDefault();
-  const currentHole = holeSelect ? holeSelect.value : "1";
-  const inputs = playerInputsContainer.querySelectorAll('input[type="number"]');
+// Render student list in A-Z order for input page
+function renderInputPage() {
+  const listContainer = document.getElementById('input-list');
+  if (!listContainer) return;
 
-  const updates = {};
-  inputs.forEach(input => {
-    const key = input.id.replace('input-', '');
-    const name = input.dataset.player;
-    const score = parseInt(input.value, 10) || 0;
+  const monthSelect = document.getElementById('month-select');
+  const selectedMonth = monthSelect && monthSelect.value ? monthSelect.value : getCurrentMonth();
+  
+  let storageKey = selectedMonth === 'Year Only' ? 'yearlyWins' : `monthlyWins_${selectedMonth}`;
+  let players = getPlayers(storageKey);
+  players.sort((a, b) => a.name.localeCompare(b.name));
 
-    updates[`scores/hole_${currentHole}/${key}`] = { name, score };
+  listContainer.innerHTML = '';
+
+  players.forEach((player, index) => {
+    const row = document.createElement('div');
+    row.className = 'input-row';
+    row.style.margin = '10px 0';
+    row.innerHTML = `
+      <span class="player-name">${player.name} (Current: ${player.wins})</span>
+      <button type="button" onclick="changeDelta(${index}, -1)">-</button>
+      <input type="number" id="delta-${index}" value="0" data-name="${player.name}" style="width: 50px; text-align: center;" />
+      <button type="button" onclick="changeDelta(${index}, 1)">+</button>
+    `;
+    listContainer.appendChild(row);
   });
+}
 
-  update(ref(db), updates)
-    .then(() => {
-      alert(`Scores for Hole ${currentHole} updated successfully!`);
-    })
-    .catch((err) => {
-      console.error("Failed to save scores:", err);
-      alert("Error saving scores. Check browser console for details.");
+// Apply changes based on selection, then reset inputs to 0
+function submitWins() {
+  const monthSelect = document.getElementById('month-select');
+  const selectedMonth = monthSelect && monthSelect.value ? monthSelect.value : getCurrentMonth();
+  const inputs = document.querySelectorAll('[id^="delta-"]');
+
+  if (selectedMonth === 'Year Only') {
+    let yearlyPlayers = getPlayers('yearlyWins');
+    inputs.forEach(input => {
+      const name = input.getAttribute('data-name');
+      const delta = parseInt(input.value) || 0;
+      const yPlayer = yearlyPlayers.find(p => p.name === name);
+      if (yPlayer) yPlayer.wins = Math.max(0, yPlayer.wins + delta);
     });
-}
+    localStorage.setItem('yearlyWins', JSON.stringify(yearlyPlayers));
+  } else {
+    const monthKey = `monthlyWins_${selectedMonth}`;
+    let monthlyPlayers = getPlayers(monthKey);
+    let yearlyPlayers = getPlayers('yearlyWins');
 
-// Utility: Prevent HTML Injection
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+    inputs.forEach(input => {
+      const name = input.getAttribute('data-name');
+      const delta = parseInt(input.value) || 0;
 
-// ---------------------------------------------------------
-// 4. Initialization & Event Binding
-// ---------------------------------------------------------
+      const mPlayer = monthlyPlayers.find(p => p.name === name);
+      if (mPlayer) mPlayer.wins = Math.max(0, mPlayer.wins + delta);
+
+      const yPlayer = yearlyPlayers.find(p => p.name === name);
+      if (yPlayer) yPlayer.wins = Math.max(0, yPlayer.wins + delta);
+    });
+
+    localStorage.setItem(monthKey, JSON.stringify(monthlyPlayers));
+    localStorage.setItem('yearlyWins', JSON.stringify(yearlyPlayers));
+  }
+
+  renderInputPage();
+}
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Load initial leaderboard data
-  if (holeSelect) {
-    fetchLeaderboard(holeSelect.value);
-
-    holeSelect.addEventListener('change', (e) => {
-      const selectedHole = e.target.value;
-      fetchLeaderboard(selectedHole);
-
-      // Refresh admin form if currently visible
-      if (inputContainer && inputContainer.style.display !== 'none') {
-        loadScoreInputRows(selectedHole);
-      }
-    });
-  }
-
-  // Bind PIN verification listeners
-  if (pinSubmitBtn) {
-    pinSubmitBtn.addEventListener('click', verifyPin);
-  }
-
-  if (pinInput) {
-    pinInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') verifyPin();
-    });
-  }
-
-  // Bind score submission form
-  if (scoreForm) {
-    scoreForm.addEventListener('submit', submitScores);
-  }
+  populateMonthDropdowns();
+  const currentMonth = getCurrentMonth();
+  renderLeaderboard('podium-body', `monthlyWins_${currentMonth}`, 5);  // Home: Current Month Top 5
+  renderLeaderboard('yearly-podium-body', 'yearlyWins', 5);             // Home: All-Year Top 5
+  renderMonthView();                                                    // Month: Full Selected Month List
+  renderLeaderboard('allyear-leaderboard-body', 'yearlyWins');          // Year: Full List
 });
