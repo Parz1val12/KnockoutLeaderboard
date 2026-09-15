@@ -233,6 +233,17 @@ tbody td:last-child {
   margin: 0 8px;
 }
 
+/* Hide spin buttons in number inputs */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 button {
   background-color: var(--accent-color);
   color: #0f172a;
@@ -246,7 +257,7 @@ button {
 
 button:hover {
   background-color: var(--accent-hover);
-  color: var(--text-primary);
+  color: #0f172a;
 }
 
 .submit-btn {

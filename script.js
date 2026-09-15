@@ -9,11 +9,13 @@ const firebaseConfig = {
   measurementId: "G-Z764K0F1B1"
 };
 
-// Initialize Firebase & Cloud Firestore
-firebase.initializeApp(firebaseConfig);
+// Initialize Firebase & Cloud Firestore safely
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.firestore();
 
-// Default list of classmates
+// Permanent List of Classmates
 const defaultClassmates = [
   { name: "Ian", wins: 0 },
   { name: "Ben", wins: 0 },
@@ -72,21 +74,41 @@ function populateMonthDropdowns() {
   }
 }
 
-// Fetch players from Firestore (initializes default list if document doesn't exist yet)
+// Merge Firestore wins with hardcoded master classmate list
 async function getPlayers(key) {
-  const docRef = db.collection("leaderboard").doc(key);
-  const doc = await docRef.get();
-  
-  if (!doc.exists) {
-    await docRef.set({ players: defaultClassmates });
+  let firestorePlayers = [];
+  try {
+    const docRef = db.collection("leaderboard").doc(key);
+    const doc = await docRef.get();
+    
+    if (!doc.exists) {
+      await docRef.set({ players: defaultClassmates });
+      firestorePlayers = defaultClassmates;
+    } else {
+      firestorePlayers = doc.data().players || [];
+    }
+  } catch (err) {
+    console.warn("Firestore access error/offline mode. Falling back to default list:", err);
     return JSON.parse(JSON.stringify(defaultClassmates));
   }
-  return doc.data().players;
+
+  // Ensure all master names exist, retaining wins from Firestore if present
+  return defaultClassmates.map(masterPlayer => {
+    const matched = firestorePlayers.find(p => p.name === masterPlayer.name);
+    return {
+      name: masterPlayer.name,
+      wins: matched ? matched.wins : 0
+    };
+  });
 }
 
 // Save player list back to Firestore
 async function savePlayers(key, players) {
-  await db.collection("leaderboard").doc(key).set({ players });
+  try {
+    await db.collection("leaderboard").doc(key).set({ players });
+  } catch (err) {
+    console.error("Failed to save to Firestore:", err);
+  }
 }
 
 // Unified leaderboard renderer
