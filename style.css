@@ -34,6 +34,12 @@ body {
   padding: 20px;
 }
 
+/* Accessibility Focus Outline for Keyboard Nav */
+:focus-visible {
+  outline: 3px solid var(--accent-color) !important;
+  outline-offset: 3px;
+}
+
 /* Header & Navigation */
 header {
   width: 100%;
@@ -85,6 +91,7 @@ section, .container {
   padding: 24px;
   margin-bottom: 2rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 h2 {
@@ -96,7 +103,7 @@ h2 {
   padding-bottom: 4px;
 }
 
-/* Dropdowns & Labels */
+/* Dropdowns & Form Labels */
 label {
   font-weight: 600;
   color: var(--text-secondary);
@@ -113,10 +120,12 @@ select {
   margin-bottom: 1.5rem;
   cursor: pointer;
   outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 select:focus {
   border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
 }
 
 /* Tables */
@@ -153,7 +162,8 @@ thead th:last-child {
 
 tbody tr {
   border-bottom: 1px solid var(--card-border);
-  transition: background-color 0.15s ease;
+  animation: fadeInUp 0.35s ease-out forwards;
+  transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 tbody tr:last-child {
@@ -162,6 +172,7 @@ tbody tr:last-child {
 
 tbody tr:hover {
   background-color: var(--table-hover);
+  transform: translateX(4px);
 }
 
 tbody td {
@@ -180,10 +191,21 @@ tbody td:last-child {
   color: var(--accent-color);
 }
 
+/* Animated Medals for 1st, 2nd, and 3rd Place */
+span[role="img"][aria-label*="Place"] {
+  display: inline-block;
+  animation: medalFloat 2.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+span[aria-label="2nd Place"] { animation-delay: 0.3s; }
+span[aria-label="3rd Place"] { animation-delay: 0.6s; }
+
 /* Admin Input Interface */
 .auth-box {
   text-align: center;
   padding: 2rem 1rem;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 .auth-box input[type="password"] {
@@ -195,16 +217,19 @@ tbody td:last-child {
   font-size: 1rem;
   margin-right: 8px;
   outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .auth-box input[type="password"]:focus {
   border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
 }
 
 #pin-error {
   color: var(--danger-color);
   margin-top: 10px;
   font-weight: 600;
+  animation: shakeError 0.4s ease-in-out;
 }
 
 .input-row {
@@ -215,6 +240,12 @@ tbody td:last-child {
   padding: 10px 16px;
   border-radius: 8px;
   border: 1px solid var(--card-border);
+  animation: fadeInUp 0.3s ease-out forwards;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.input-row:hover {
+  background-color: rgba(255, 255, 255, 0.03);
 }
 
 .player-name {
@@ -231,8 +262,16 @@ tbody td:last-child {
   font-size: 1rem;
   font-weight: bold;
   margin: 0 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.input-row input[type="number"]:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+  outline: none;
+}
+
+/* Buttons */
 button {
   background-color: var(--accent-color);
   color: #0f172a;
@@ -241,12 +280,17 @@ button {
   padding: 8px 14px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: transform 0.1s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 button:hover {
   background-color: var(--accent-hover);
   color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: scale(0.92);
 }
 
 .submit-btn {
@@ -264,6 +308,44 @@ footer {
   justify-content: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+/* Keyframe Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes medalFloat {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.15);
+  }
+}
+
+@keyframes shakeError {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Mobile Responsive */
