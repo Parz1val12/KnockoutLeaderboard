@@ -32,7 +32,9 @@ const defaultClassmates = [
   { name: "Hailey", wins: 0 },
   { name: "Mr. McMaster", wins: 0 }
 ];
+
 const WHITE_BORDER = "1471";
+
 const MONTHS = [
   "January", "February", "March", "April", "May", "June", 
   "July", "August", "September", "October", "November", "December"
@@ -108,6 +110,7 @@ async function savePlayers(key, players) {
     await db.collection("leaderboard").doc(key).set({ players });
   } catch (err) {
     console.error("Failed to save to Firestore:", err);
+    throw err;
   }
 }
 
@@ -215,36 +218,45 @@ async function submitWins() {
   const selectedMonth = monthSelect && monthSelect.value ? monthSelect.value : getCurrentMonth();
   const inputs = document.querySelectorAll('[id^="delta-"]');
 
-  if (selectedMonth === 'Year Only') {
-    let yearlyPlayers = await getPlayers('yearlyWins');
-    inputs.forEach(input => {
-      const name = input.getAttribute('data-name');
-      const delta = parseInt(input.value) || 0;
-      const yPlayer = yearlyPlayers.find(p => p.name === name);
-      if (yPlayer) yPlayer.wins = Math.max(0, yPlayer.wins + delta);
-    });
-    await savePlayers('yearlyWins', yearlyPlayers);
-  } else {
-    const monthKey = `monthlyWins_${selectedMonth}`;
-    let monthlyPlayers = await getPlayers(monthKey);
-    let yearlyPlayers = await getPlayers('yearlyWins');
+  inputs.forEach(input => input.disabled = true);
 
-    inputs.forEach(input => {
-      const name = input.getAttribute('data-name');
-      const delta = parseInt(input.value) || 0;
+  try {
+    if (selectedMonth === 'Year Only') {
+      let yearlyPlayers = await getPlayers('yearlyWins');
+      inputs.forEach(input => {
+        const name = input.getAttribute('data-name');
+        const delta = parseInt(input.value) || 0;
+        const yPlayer = yearlyPlayers.find(p => p.name === name);
+        if (yPlayer) yPlayer.wins = Math.max(0, yPlayer.wins + delta);
+      });
+      await savePlayers('yearlyWins', yearlyPlayers);
+    } else {
+      const monthKey = `monthlyWins_${selectedMonth}`;
+      let monthlyPlayers = await getPlayers(monthKey);
+      let yearlyPlayers = await getPlayers('yearlyWins');
 
-      const mPlayer = monthlyPlayers.find(p => p.name === name);
-      if (mPlayer) mPlayer.wins = Math.max(0, mPlayer.wins + delta);
+      inputs.forEach(input => {
+        const name = input.getAttribute('data-name');
+        const delta = parseInt(input.value) || 0;
 
-      const yPlayer = yearlyPlayers.find(p => p.name === name);
-      if (yPlayer) yPlayer.wins = Math.max(0, yPlayer.wins + delta);
-    });
+        const mPlayer = monthlyPlayers.find(p => p.name === name);
+        if (mPlayer) mPlayer.wins = Math.max(0, mPlayer.wins + delta);
 
-    await savePlayers(monthKey, monthlyPlayers);
-    await savePlayers('yearlyWins', yearlyPlayers);
+        const yPlayer = yearlyPlayers.find(p => p.name === name);
+        if (yPlayer) yPlayer.wins = Math.max(0, yPlayer.wins + delta);
+      });
+
+      await savePlayers(monthKey, monthlyPlayers);
+      await savePlayers('yearlyWins', yearlyPlayers);
+    }
+
+    // Redirect to home screen (index page)
+    window.location.href = "index.html";
+  } catch (err) {
+    console.error("Error updating scores:", err);
+    alert("Failed to update scores. Check browser console for details.");
+    inputs.forEach(input => input.disabled = false);
   }
-
-  await renderInputPage();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
