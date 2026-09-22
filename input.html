@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin - Win Input</title>
+  <!-- Firebase Compatibility SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -13,17 +15,20 @@
   <div class="container">
     <a href="index.html" class="nav-link">&larr; Back to Leaderboard</a>
 
-    <!-- Passcode Lock Container -->
+    <!-- Auth Container -->
     <div id="auth-container" class="auth-box">
       <h2>Admin Access</h2>
-      <input type="password" id="admin-pin" placeholder="Enter Admin PIN">
-      <button type="button" onclick="checkAdminAccess()">Unlock</button>
-      <p id="pin-error"></p>
+      <p style="margin-bottom: 1rem; color: var(--text-secondary);">Sign in with Google to manage leaderboard wins.</p>
+      <button type="button" onclick="loginWithGoogle()">Sign in with Google</button>
+      <p id="pin-error" style="color: var(--danger-color); margin-top: 1rem;"></p>
     </div>
 
     <!-- Win Input Container (Revealed after authorization) -->
     <div id="input-container" style="display: none;">
-      <h2>Update Wins</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Update Wins</h2>
+        <button type="button" onclick="logoutGoogle()" style="padding: 6px 12px; font-size: 0.85rem;">Sign Out</button>
+      </div>
 
       <label for="month-select">Select Target: </label>
       <select id="month-select" onchange="renderInputPage()"></select>

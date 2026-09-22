@@ -15,6 +15,9 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
+// Admin Email Whitelist
+const ADMIN_EMAIL = "couragelink925@gmail.com";
+
 // Permanent List of Classmates
 const defaultClassmates = [
   { name: "Ian", wins: 0 },
@@ -32,8 +35,6 @@ const defaultClassmates = [
   { name: "Hailey", wins: 0 },
   { name: "Mr. McMaster", wins: 0 }
 ];
-
-const WHITE_BORDER = "1471";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June", 
@@ -163,18 +164,28 @@ function renderMonthView() {
   renderLeaderboard('month-leaderboard-body', `monthlyWins_${select.value}`);
 }
 
-function checkWhiteBorder() {
-  const pinInput = document.getElementById('admin-pin') || document.getElementById('user-key');
-  const authContainer = document.getElementById('auth-container');
-  const inputContainer = document.getElementById('input-container');
-  const errorMsg = document.getElementById('pin-error') || document.getElementById('key-error');
+// Google Auth Sign In
+function loginWithGoogle() {
+  if (!firebase.auth) {
+    console.error("Firebase Auth SDK not loaded.");
+    return;
+  }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).then((result) => {
+    // Auth state observer handles UI toggling automatically
+  }).catch((error) => {
+    console.error("Google auth error:", error);
+    const errorMsg = document.getElementById('pin-error');
+    if (errorMsg) errorMsg.textContent = 'Authentication failed. Please try again.';
+  });
+}
 
-  if (pinInput && pinInput.value === WHITE_BORDER) {
-    if (authContainer) authContainer.style.display = 'none';
-    if (inputContainer) inputContainer.style.display = 'block';
-    renderInputPage();
-  } else if (errorMsg) {
-    errorMsg.textContent = 'Invalid Code';
+// Google Auth Sign Out
+function logoutGoogle() {
+  if (firebase.auth) {
+    firebase.auth().signOut().then(() => {
+      window.location.reload();
+    });
   }
 }
 
@@ -267,11 +278,29 @@ document.addEventListener('DOMContentLoaded', () => {
   renderMonthView();
   renderLeaderboard('allyear-leaderboard-body', 'yearlyWins');
 
-  const pinInput = document.getElementById('admin-pin') || document.getElementById('user-key');
-  if (pinInput) {
-    pinInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        checkWhiteBorder();
+  // Monitor Authentication State
+  if (firebase.auth) {
+    firebase.auth().onAuthStateChanged((user) => {
+      const authContainer = document.getElementById('auth-container');
+      const inputContainer = document.getElementById('input-container');
+      const errorMsg = document.getElementById('pin-error');
+
+      if (user) {
+        if (user.email === ADMIN_EMAIL) {
+          if (authContainer) authContainer.style.display = 'none';
+          if (inputContainer) inputContainer.style.display = 'block';
+          if (errorMsg) errorMsg.textContent = '';
+          renderInputPage();
+        } else {
+          // Block unauthorized Google accounts
+          if (authContainer) authContainer.style.display = 'block';
+          if (inputContainer) inputContainer.style.display = 'none';
+          if (errorMsg) errorMsg.textContent = `Access denied. ${user.email} is not authorized.`;
+          firebase.auth().signOut();
+        }
+      } else {
+        if (authContainer) authContainer.style.display = 'block';
+        if (inputContainer) inputContainer.style.display = 'none';
       }
     });
   }
